@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>REN's Switchable Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; margin: 0; transition: background 0.3s, color 0.3s; }
+    header { background: #0078d7; color: white; padding: 20px; text-align: center; }
+    nav { background: #005fa3; padding: 10px; text-align: center; }
+    nav button { margin: 5px; padding: 10px 15px; border: none; border-radius: 5px; background: #0078d7; color: white; cursor: pointer; }
+    nav button:hover { background: #004f8c; }
+    section { display: none; padding: 20px; background: white; margin: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .active { display: block; }
+    .dark-mode { background: #1e1e1e; color: #ddd; }
+    .dark-mode section { background: #2a2a2a; }
+    .news-card { background: #fafafa; margin: 15px 0; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-direction: row; gap: 15px; }
+    .news-card img { width: 150px; height: auto; border-radius: 6px; object-fit: cover; }
+    .news-content { flex: 1; }
+    .pagination { text-align: center; margin-top: 20px; }
+    .page-indicator { margin-top: 10px; font-weight: bold; color: #333; }
+    table { border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>REN's Switchable Dashboard</h1>
+    <button onclick="toggleDarkMode()">🌙 Dark Mode</button>
+    <div id="clock"></div>
+  </header>
+
+  <!-- Navigation -->
+  <nav>
+    <button onclick="showSection('weatherSection')">🌦️ Weather</button>
+    <button onclick="showSection('newsSection')">📰 News</button>
+    <button onclick="showSection('currencySection')">💱 Currency</button>
+    <button onclick="showSection('quoteSection')">📅 Quotes</button>
+    <button onclick="showSection('stocksSection')">📈 Stocks</button>
+  </nav>
+
+  <!-- Weather Section -->
+  <section id="weatherSection" class="active">
+    <h2>🌦️ Kuala Lumpur Weather</h2>
+    <div id="weatherResult"></div>
+  </section>
+
+  <!-- News Section -->
+  <section id="newsSection">
+    <h2>📰 News Hub</h2>
+    <select id="sourceSelect">
+      <option value="http://rss.cnn.com/rss/edition_world.rss" selected>CNN World</option>
+      <option value="https://feeds.bbci.co.uk/news/world/rss.xml">BBC World</option>
+      <option value="http://feeds.reuters.com/reuters/worldNews">Reuters World</option>
+      <option value="https://www.aljazeera.com/xml/rss/all.xml">Al Jazeera</option>
+    </select>
+    <input type="text" id="searchInput" placeholder="Search headlines..." oninput="applyFilter()">
+    <button onclick="getNews()">Load News</button>
+    <div id="newsContainer"></div>
+    <div class="pagination">
+      <button onclick="prevPage()">Previous</button>
+      <button onclick="nextPage()">Next</button>
+      <div id="pageIndicator"></div>
+    </div>
+  </section>
+
+  <!-- Currency Section -->
+  <section id="currencySection">
+    <h2>💱 Currency Converter & Rates</h2>
+    <input type="number" id="amountInput" placeholder="Enter amount" value="1">
+    <select id="baseCurrency">
+      <option value="USD" selected>USD</option>
+      <option value="EUR">EUR</option>
+      <option value="GBP">GBP</option>
+      <option value="JPY">JPY</option>
+      <option value="SGD">SGD</option>
+      <option value="MYR">MYR</option>
+    </select>
+    <button onclick="convertCurrency()">Convert</button>
+    <div id="currencyResult"></div>
+  </section>
+
+  <!-- Quotes Section -->
+  <section id="quoteSection">
+    <h2>📅 Daily Inspiration</h2>
+    <div id="quoteResult"></div>
+  </section>
+
+  <!-- Stocks Section -->
+  <section id="stocksSection">
+    <h2>📈 Global Market Indices</h2>
+    <div id="stocksResult"></div>
+  </section>
+
+  <script>
+    // Dark Mode
+    function toggleDarkMode() { document.body.classList.toggle("dark-mode"); }
+
+    // Clock
+    function updateClock() {
+      let now = new Date();
+      document.getElementById("clock").innerText = "⏰ " + now.toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000); updateClock();
+
+    // Section Switcher
+    function showSection(id) {
+      document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+
+      if (id === "weatherSection") getWeather();
+      if (id === "currencySection") convertCurrency();
+      if (id === "stocksSection") getIndices();
+      if (id === "quoteSection") getQuote();
+      if (id === "newsSection") getNews();
+    }
+
+    // Weather (default Kuala Lumpur)
+    async function getWeather() {
+      let url = "https://api.open-meteo.com/v1/forecast?latitude=3.14&longitude=101.69&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&current_weather=true&timezone=auto";
+      try {
+        let response = await fetch(url);
+        let data = await response.json();
+        let w = data.current_weather;
+        let forecast = data.daily;
+        let output = `
+          <button onclick="getWeather()">🔄 Refresh Weather</button>
+          <p>🌡️ Current Temp: ${w.temperature}°C</p>
+          <p>💨 Wind: ${w.windspeed} km/h</p>
+          <p>🕒 Last update: ${new Date(w.time).toLocaleString()}</p>
+          <h4>📅 7-Day Forecast</h4>
+          <ul>
+        `;
+        for (let i = 0; i < forecast.time.length; i++) {
+          let rain = forecast.precipitation_sum[i];
+          let maxTemp = forecast.temperature_2m_max[i];
+          let icon = "☁️";
+          if (rain > 0) icon = "🌧️";
+          else if (maxTemp > 28) icon = "☀️";
+          output += `<li>${forecast.time[i]} ${icon} → Max: ${maxTemp}°C, Min: ${forecast.temperature_2m_min[i]}°C, 🌧️ Rain: ${rain} mm</li>`;
+        }
+        output += "</ul>";
+        document.getElementById('weatherResult').innerHTML = output;
+      } catch {
+        document.getElementById('weatherResult').innerText = "Error fetching weather.";
+      }
+    }
+
+    // News with search + pagination
+    let articles = [], filteredArticles = [], currentPage = 0, pageSize = 5;
+    async function getNews() {
+      let source = document.getElementById('sourceSelect').value;
+      let url = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(source);
+      try {
+        let response = await fetch(url);
+        let data = await response.json();
+        articles = data.items; applyFilter();
+      } catch { document.getElementById('newsContainer').innerText = "Error fetching news."; }
+    }
+    function applyFilter() {
+      let searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      filteredArticles = articles.filter(a => a.title.toLowerCase().includes(searchTerm));
+      currentPage = 0; renderPage();
+    }
+    function renderPage() {
+      let container = document.getElementById('newsContainer'); container.innerHTML = "";
+      let start = currentPage * pageSize, end = start + pageSize;
+      let pageItems = filteredArticles.slice(start, end);
+      let totalPages = Math.ceil(filteredArticles.length / pageSize);
+      document.getElementById('pageIndicator').innerText = `Page ${currentPage + 1} of ${totalPages}`;
+    }
+    function nextPage() { if ((currentPage + 1) * pageSize < filteredArticles.length) { currentPage++; renderPage(); } }
+    function prevPage() { if (currentPage > 0) { currentPage--; renderPage(); } }
+
+    // Currency Converter & Rates
+    async function convertCurrency() {
+      let amount = parseFloat(document.getElementById('amountInput').value);
+      let base = document.getElementById('baseCurrency').value;
+      if (isNaN(amount)) {
+        document.getElementById('currencyResult').innerText = "Enter a valid number.";
+        return;
+      }
+      let url = `https://api.exchangerate.host/latest?base=${base}&symbols=USD,EUR,GBP,JPY,SGD,MYR`;
+      try {
+        let response = await fetch(url);
+        let parsed = await response.json();
+        let rates = parsed.rates;
+        let output = `
+          <button onclick="convertCurrency()">🔄 Refresh Rates</button>
+          <p>${amount} ${base} equals:</p>
+          <table>
+            <tr><th>Currency</th><th>Converted Amount</th><th>Rate</th></tr>
+        `;
+        for (let cur in rates) {
+          let converted = (amount * rates[cur]).toFixed(2);
+          output += `<tr><td>${cur}</td><td>${converted}</td><td>1 ${base} = ${rates[cur]} ${cur}</td></tr>`;
+        }
+        output += `</table><p>📅 Updated: ${parsed.date}</p>`;
+        document.getElementById('currencyResult').innerHTML = output;
+      } catch {
+        document.getElementById('currencyResult').innerText = "Error fetching exchange rates.";
+      }
+    }
+
+    // Quotes (ZenQuotes API)
+    async function getQuote() {
+      let url = "https://zenquotes.io/api/random";
+      try {
+        let response = await fetch(url);
+        let parsed = await response.json();
+        let q = parsed[0];
+        document.getElementById('quoteResult').innerHTML = `
+          <button onclick="getQuote()">🔄 Refresh Quote</button>
+          <p>"${q.q}"</p>
+          <p>👤 — ${q.a}</p>
+        `;
+      } catch {
+        document.getElementById('quoteResult').innerText = "Error fetching quote.";
+      }
+    }
+
+    // Stocks (MarketStack demo key)
+    async function getIndices() {
+      let url = "http://api.marketstack.com/v1/eod?access_key=demo&symbols=DJI,IXIC,GSPC,FTSE,N225,KLSE";
+      try {
+        let response = await fetch(url);
+        let data = await response.json();
+        let container = document.getElementById('stocksResult');
+        container.innerHTML = "<button onclick='getIndices()'>🔄 Refresh Indices</button><ul>";
+        data.data.forEach(idx => {
+          container.innerHTML += `<li>${idx.symbol} → 💵 ${idx.close} (Date: ${idx.date})</li>`;
+        });
+        container.innerHTML += "</ul>";
+      } catch {
+        document.getElementById('stocksResult').innerText = "Error fetching indices.";
+      }
+    }
+
+    // Load weather immediately on startup
+    getWeather();
+  </script>
+</body>
+</html>
