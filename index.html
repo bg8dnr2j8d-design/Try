@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>News Fetcher</title>
+</head>
+<body>
+  <h2>📰 Latest News</h2>
+  <button onclick="getNews()">Get Headlines</button>
+  <ul id="newsList"></ul>
+
+  <script>
+    async function getNews() {
+      let url = "https://api.rss2json.com/v1/api.json?rss_url=https://feeds.bbci.co.uk/news/world/rss.xml";
+      try {
+        let response = await fetch(url);
+        let data = await response.json();
+        let list = document.getElementById('newsList');
+        list.innerHTML = "";
+        data.items.slice(0,5).forEach(article => {
+          let li = document.createElement("li");
+          li.innerHTML = `<a href="${article.link}" target="_blank">${article.title}</a>`;
+          list.appendChild(li);
+        });
+      } catch (error) {
+        document.getElementById('newsList').innerText = "Error fetching news.";
+      }
+    }
+  </script>
+</body>
+</html>
