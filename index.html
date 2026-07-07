@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ultimate Multi-Source News Feeder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- important for mobile -->
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; margin: 0; }
+    header { background: #0078d7; color: white; padding: 20px; text-align: center; }
+    h1 { margin: 0; }
+    section { padding: 20px; }
+    select, button { padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid #ccc; font-size: 1em; }
+    button { background: #0078d7; color: white; border: none; cursor: pointer; }
+    button:hover { background: #005fa3; }
+    .news-card { background: white; margin: 15px 0; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: row; gap: 15px; }
+    .news-card img { width: 150px; height: auto; border-radius: 6px; object-fit: cover; }
+    .news-content { flex: 1; }
+    .news-content h3 { margin: 0 0 10px; color: #0078d7; font-size: 1.2em; }
+    .news-content p { margin: 5px 0; color: #333; font-size: 0.95em; }
+    .news-content small { color: #666; display: block; margin-top: 5px; }
+    .news-content a { text-decoration: none; color: #0078d7; font-weight: bold; }
+    .news-content a:hover { text-decoration: underline; }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .news-card { flex-direction: column; align-items: center; text-align: center; }
+      .news-card img { width: 100%; max-width: 400px; }
+      .news-content h3 { font-size: 1.1em; }
+      .news-content p { font-size: 0.9em; }
+    }
+    @media (max-width: 480px) {
+      header { padding: 15px; }
+      h1 { font-size: 1.4em; }
+      select, button { width: 100%; margin: 8px 0; }
+      .news-card img { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📰 Ultimate News Hub</h1>
+    <p>Select a source and load headlines</p>
+  </header>
+
+  <section>
+    <select id="sourceSelect">
+      <option value="https://feeds.bbci.co.uk/news/world/rss.xml">BBC World</option>
+      <option value="http://rss.cnn.com/rss/edition_world.rss">CNN World</option>
+      <option value="http://feeds.reuters.com/reuters/worldNews">Reuters World</option>
+      <option value="https://www.aljazeera.com/xml/rss/all.xml">Al Jazeera</option>
+    </select>
+    <button onclick="getNews()">Load News</button>
+    <div id="newsContainer"></div>
+  </section>
+
+  <script>
+    async function getNews() {
+      let source = document.getElementById('sourceSelect').value;
+      let url = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(source);
+      try {
+        let response = await fetch(url);
+        let data = await response.json();
+        let container = document.getElementById('newsContainer');
+        container.innerHTML = "";
+        // Show top 10 headlines with images
+        data.items.slice(0,10).forEach(article => {
+          let card = document.createElement("div");
+          card.className = "news-card";
+          let imageUrl = article.enclosure && article.enclosure.link ? article.enclosure.link : "https://via.placeholder.com/400x200?text=No+Image";
+          card.innerHTML = `
+            <img src="${imageUrl}" alt="News image">
+            <div class="news-content">
+              <h3>${article.title}</h3>
+              <p>${article.description}</p>
+              <small>Published: ${new Date(article.pubDate).toLocaleString()}</small>
+              <a href="${article.link}" target="_blank">Read more →</a>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+      } catch (error) {
+        document.getElementById('newsContainer').innerText = "Error fetching news.";
+      }
+    }
+  </script>
+</body>
+</html>
