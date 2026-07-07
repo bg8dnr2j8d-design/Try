@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tiffany's Ultimate Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; margin: 0; transition: background 0.3s, color 0.3s; }
+    header { background: #0078d7; color: white; padding: 20px; text-align: center; }
+    h1 { margin: 0; }
+    section { padding: 20px; background: white; margin: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    select, button, input { padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid #ccc; font-size: 1em; }
+    button { background: #0078d7; color: white; border: none; cursor: pointer; }
+    button:hover { background: #005fa3; }
+    .news-card { background: #fafafa; margin: 15px 0; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-direction: row; gap: 15px; }
+    .news-card img { width: 150px; height: auto; border-radius: 6px; object-fit: cover; }
+    .news-content { flex: 1; }
+    .news-content h3 { margin: 0 0 10px; color: #0078d7; font-size: 1.2em; }
+    .news-content p { margin: 5px 0; color: #333; font-size: 0.95em; }
+    .news-content small { color: #666; display: block; margin-top: 5px; }
+    .news-content a { text-decoration: none; color: #0078d7; font-weight: bold; }
+    .news-content a:hover { text-decoration: underline; }
+    .pagination { text-align: center; margin-top: 20px; }
+    .page-indicator { margin-top: 10px; font-weight: bold; color: #333; }
+    .dark-mode { background: #1e1e1e; color: #ddd; }
+    .dark-mode section { background: #2a2a2a; }
+    .dark-mode .news-content h3, .dark-mode .news-content a { color: #4da3ff; }
+    @media (max-width: 768px) {
+      .news-card { flex-direction: column; align-items: center; text-align: center; }
+      .news-card img { width: 100%; max-width: 400px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📰 REN's Ultimate Dashboard</h1>
+    <p>News • Weather • Currency • Quotes</p>
+    <button onclick="toggleDarkMode()">🌙 Toggle Dark Mode</button>
+    <div id="clock"></div>
+  </header>
+
+  <!-- News Hub -->
+  <section>
+    <h2>📰 Multi-Source News Hub</h2>
+    <select id="sourceSelect">
+      <option value="http://rss.cnn.com/rss/edition_world.rss" selected>CNN World</option>
+      <option value="https://feeds.bbci.co.uk/news/world/rss.xml">BBC World</option>
+      <option value="http://feeds.reuters.com/reuters/worldNews">Reuters World</option>
+      <option value="https://www.aljazeera.com/xml/rss/all.xml">Al Jazeera</option>
+    </select>
+    <input type="text" id="searchInput" placeholder="Search headlines...">
+    <button onclick="getNews()">Load News</button>
+    <div id="newsContainer"></div>
+    <div class="pagination">
+      <button onclick="prevPage()">Previous</button>
+      <button onclick="nextPage()">Next</button>
+      <div id="pageIndicator" class="page-indicator"></div>
+    </div>
+  </section>
+
+  <!-- Weather -->
+  <section id="weather">
+    <h2>🌦️ Current Weather (Kuala Lumpur)</h2>
+    <button onclick="getWeather()">Check Weather</button>
+    <div id="weatherResult"></div>
+  </section>
+
+  <!-- Currency -->
+  <section id="currency">
+    <h2>💱 Currency Converter (USD → MYR)</h2>
+    <input type="number" id="usdInput" placeholder="Enter USD">
+    <button onclick="convertCurrency()">Convert</button>
+    <div id="currencyResult"></div>
+  </section>
+
+  <!-- Quotes -->
+  <section id="quote">
+    <h2>📅 Daily Inspiration</h2>
+    <button onclick="getQuote()">Get Quote</button>
+    <div id="quoteResult"></div>
+  </section>
+
+  <script>
+    // Dark Mode
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark-mode");
+    }
+
+    // Clock
+    function updateClock() {
+      let now = new Date();
+      document.getElementById("clock").innerText = "⏰ " + now.toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // News Hub
+    let articles = [];
+    let currentPage = 0;
+    const pageSize = 10;
+
+    async function getNews() {
+      let source = document.getElementById('sourceSelect').value;
+      let url = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(source);
+      try {
+        let response = await fetch(url);
+        let data = await response.json();
+        articles = data.items;
+        currentPage = 0;
+        renderPage();
+      } catch (error) {
+        document.getElementById('newsContainer').innerText = "Error fetching news.";
+      }
+    }
+
+    function renderPage() {
+      let container = document.getElementById('newsContainer');
+      container.innerHTML = "";
+      let start = currentPage * pageSize;
+      let end = start + pageSize;
+      let searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      let filtered = articles.filter(a => a.title.toLowerCase().includes(searchTerm));
+      let pageItems = filtered.slice(start, end);
+      pageItems.forEach(article => {
+        let card = document.createElement("div");
+        card.className = "news-card";
+        let imageUrl = article.enclosure && article.enclosure.link ? article.enclosure.link : "https://via.placeholder.com/400x200?text=No+Image";
+        card.innerHTML = `
+          <img src="${imageUrl}" alt="News image">
+          <div class="news-content">
+            <h3>${article.title}</h3>
+            <p>${article.description}</p>
+            <small>Published: ${new Date(article.pubDate).toLocaleString()}</small>
+            <a href="${article.link}" target="_blank">Read more →</a>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+      let totalPages = Math.ceil(filtered.length / pageSize);
+      document.getElementById('pageIndicator').innerText = `Page ${currentPage + 1} of ${totalPages}`;
+    }
+
+    function nextPage() {
+      let searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      let filtered = articles.filter(a => a.title.toLowerCase().includes(searchTerm));
+      if ((currentPage + 1) * pageSize < filtered.length) {
+        currentPage++;
+        renderPage();
+      }
+    }
+
+    function prevPage() {
+      if (currentPage > 0) {
+        currentPage--;
+        renderPage();
+      }
+    }
+
+    // Weather
+    async function getWeather() {
+      let url = "https://api.open-meteo.com/v1/forecast?latitude=3.14&longitude=101.69&current_weather=true";
+      try {
+        let response = await fetch(url);
+        let data = await response.json();
+        let w = data.current_weather;
+        let directions = ["N","NE","E","SE","S","SW","W","NW"];
+        let windDir = directions[Math.round(w.winddirection/45) % 8];
+        document.getElementById('weatherResult').innerHTML = `
+          <p>🌡️ Temp: ${w.temperature}°C</p>
+          <p>💨 Wind: ${w.windspeed} km/h (${windDir})</p>
+          <p>☀️ Condition code: ${w.weathercode}</p>
+          <p>🕒 Last update: ${new Date(w.time).toLocaleString()}</p>
+        `;
+      } catch (error) {
+        document.getElementById('weatherResult').innerText = "Error fetching weather.";
+      }
+    }
+
+    // Currency
+    async function convertCurrency() {
+      let usd = parseFloat(document.getElementById('usdInput').value);
+      if (isNaN(usd)) {
+        document.getElementById('currencyResult').innerText = "Enter a valid number.";
+        return;
+      }
+      let url = "https://api.exchangerate.host/latest?base=USD&symbols=MYR";
+      try {
+        let response = await fetch(url);
+        let data = await response.json();
+        let rate = data.rates.MYR;
+        let myr = usd * rate;
+        document.getElementById('currencyResult').innerHTML = `
+          <p>💵 USD: ${usd}</p>
+          <p>🇲🇾 MYR: RM ${myr.toFixed(2)}</p>
+          <p>📈 Rate: 1 USD = ${rate} MYR</p>
+          <p>📅 Updated: ${data.date}</p>
+        `;
+      } catch (error) {
+        document.getElementById('currencyResult').innerText = "Error fetching exchange rate.";
+      }
+    }
+
+    // Quotes
+    async function getQuote() {
+      let url = "https://api.quotable.io/random";
+      try {
+        let response = await fetch(url);
+        let data = await response.json();
+        document.getElementById('quoteResult').innerHTML = `
+          <p>"${data.content}"</p>
+          <p>👤 — ${data.author}</p>
+          <p>📚 Tags: ${data.tags.join(", ")}</p>
+        `;
+      } catch (error) {
+        document.getElementById('quoteResult').innerText = "Error fetching quote.";
+      }
+    }
+  </script>
+</body>
+</html>
